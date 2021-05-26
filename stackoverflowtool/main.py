@@ -1,0 +1,1 @@
+print("Enjoy the things and learn through terminal")

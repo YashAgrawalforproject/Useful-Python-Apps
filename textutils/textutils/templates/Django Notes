@@ -1,0 +1,104 @@
+____________________________________________________DjangoNotes______________________________________________________________
+->django-admin startproject <name> to start any project.
+->django-admin startapp <name> to start any app in project.
+->python manage.py makemigrations to show the list or initialise the changes in database.
+->python manage.py migrate to do changes in database(mostly by use models).
+->python manage.py runserver to start the server.
+->python manage.py create superuser to create admin for db(you want to required username and password)
+After u run the django-admin startproject
+1] __init__.py 2] asgi.py 3] settings.py 4] urls.py 5] views.py 6] wsgi.py and manage.py aldo comes
+After u run the django-admin startapp <name> then same file as above generate.
+
+In Settings.py- u have to use templates as 'DIRS': ["templates"] like that and ypu have to register your app as //'shop.apps.ShopConfig',
+by default sqlite database is used.STATIC_URL = '/static/'// # Managing media MEDIA_ROOT = os.path.join(BASE_DIR, 'media') MEDIA_URL = '/media/'
+from django.contrib.messages import constants as messages//for messages. //'django.contrib.humanize',
+
+In urls.py-from django.urls import path,from . import views //urlpatterns = [path('admin/', admin.site.urls),path('', views.index, name='index'),path('analyze', views.analyze, name='analyze'),]
+path('admin/', admin.site.urls),//for admin //path('', include('home.urls')),it include all urls of home app ,path('blog/', include('blog.urls')),it include all urls of blog app
+admin.site.(site_header,site_title,index_title)// for do change in admin panel #types of urls in app     path('shop/search/', views.search, name="Search"),path('shop/products/<int:myid>', views.productView, name="ProductView"),
+path('<str:slug>', views.blogPost, name="blogPost"),
+
+In the app admin.py - you have to register your model here.like admin.site.register(<name_of_model>)/@admin.register(<name_of_model>)
+class PostAdmin(admin.ModelAdmin):class Media:js= ('tinyInject.js',)//for inject
+In apps.py-from django.apps import AppConfig class nameConfig(AppConfig):name = 'name'
+
+For database : models.py
+from django.db import models //from django.contrib.auth.models import User #for login authentication // from django.utils.timezone import now #datetime
+AutoField use(primary_key=True), CharField, IntegerField, TextField,ImageField, DateTimeField,
+for users and login system u use as for comment or other things:
+class BlogComment(models.Model):
+sno = models.AutoField(primary_key=True)comment = models.TextField()  user = models.ForeignKey(User, on_delete=models.CASCADE) post = models.ForeignKey(Post, on_delete=models.CASCADE) parent = models.ForeignKey('self',on_delete=models.CASCADE, null=True ) timestamp = models.DateTimeField(default=now)
+image = models.ImageField(upload_to='shop/images', default="") subcategory = models.CharField(max_length=50, default="")
+def __str__(self):return self.comment[0:13]#from 0 to 13 character. + "..." + "by" + " " + self.user.username//this shows the staring of entry in the db.
+
+Views.py:
+[HttpResponse,render,redirect]//return [](request, 'template or .html file with location' ,params)
+
+it contains only function:
+def search(request): query = request.GET['query'] if len(query) > 78: allPosts = Post.objects.none()
+else:
+allPostsTitle = Post.objects.filter(title__icontains=query) allPostsAuthor = Post.objects.filter(author__icontains=query)#then do union allPosts = allPostsTitle.union(allPostsContent, allPostsAuthor)
+if allPosts.count() == 0:messages.warning(request, "No search results found. Please refine your query.")params = {'allPosts': allPosts, 'query': query}return render(request, 'home/search.html', params)
+if u want to change any thing in html<tag>{{ use this bracket and place under this}} </tag> and also use in some path like 	<a href="/blog/{{post.slug}}" role="button" class="btn btn-primary">Continue reading</a> Your search query : <b>{{query}}</b>for query
+
+//search function
+def searchMatch(query, item):'''return true only if query matches the item'''if query in item.desc.lower() or query in item.product_name.lower() or query in item.category.lower(): return True else:return False
+
+function to submit entries in db or type of form:
+def contact(request):thank = False if request.method=="POST":name = request.POST.get('name', '')//for any field like that contact = Contact(name=name, email=email, phone=phone, desc=desc) contact.save()thank = True return render(request, 'shop/contact.html', {'thank': thank})
+
+function to show or get entries in db or type of form:
+def blogHome(request):allPosts = Post.objects.all() context = {'allPosts': allPosts} return render(request, "blog/blogHome.html", context)
+
+def blogPost(request, slug): post = Post.objects.filter(slug=slug).first() post.views = post.views + 1 post.save()comments = BlogComment.objects.filter(post=post, parent=None)
+replies = BlogComment.objects.filter(post=post).exclude(parent=None) replyDict = {} for reply in replies: if reply.parent.sno not in replyDict.keys(): replyDict[reply.parent.sno] = [reply] else: replyDict[reply.parent.sno].append(reply)
+context = {'post': post, 'comments': comments, 'user': request.user, 'replyDict': replyDict}return render(request, "blog/blogPost.html", context)
+
+allProds = [] catprods = Product.objects.values('category', 'id') params = {'allProds':allProds}    return render(request, 'shop/index.html', params)
+
+Now for login authentication:
+def handleSignUp(request):
+if request.method == "POST":
+# Get the post parameters username = request.POST['username'] #same as above
+# check for errorneous input input name must be under 10 character or user name is alphanumeric or pass1 = pass2 for confirmation all input must be required.
+# Create the user myuser = User.objects.create_user(username, email, pass1) myuser.first_name = fname myuser.last_name = lname myuser.save() messages.success(request, " Your iCoder has been successfully created") return render(request, 'shop/contact.html')
+
+def handeLogin(request): if request.method == "POST": # Get the post parameters  loginusername = request.POST['loginusername'] loginpassword = request.POST['loginpassword'] user = authenticate(username=loginusername, password=loginpassword)
+if user is not None: login(request, user) messages.success(request, "Successfully Logged In") return redirect("home")
+else: messages.error(request, "Invalid credentials! Please try again") return redirect("home") return HttpResponse("404- Not found") return HttpResponse("login")
+
+def handelLogout(request): logout(request) messages.success(request, "Successfully logged out") return redirect('home')
+
+##for giving user authentication to any part of site like {% if user.is_authenticated %} <div> --</div> {% else %}<div>---</div> {% endif %}
+
+#some imp. funtion to give feedback to your user
+def tracker(request): if request.method=="POST":orderId = request.POST.get('orderId', '')email = request.POST.get('email', '') try: order = Orders.objects.filter(order_id=orderId, email=email) if len(order)>0: update = OrderUpdate.objects.filter(order_id=orderId) updates = []
+for item in update: updates.append({'text': item.update_desc, 'time': item.timestamp}) response = json.dumps({"status":"success", "updates": updates, "itemsJson": order[0].items_json}, default=str) return HttpResponse(response) else: return HttpResponse('{"status":"noitem"}')
+except Exception as e: return HttpResponse('{"status":"error"}') return render(request, 'shop/tracker.html')
+
+use of inheritance like that u make one basic.html and always extract common text to another file
+<title>{% block title%} {% endblock %}</title> {% block body %} {% endblock %}  before ending body tag   {% block js %} {% endblock %} before ending js.
+{% extends 'shop/basic.html' %} {% block title%} About Us{% endblock %} {% block body %} #extract like that.
+
+message block
+{% for message in messages  %} <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert"> <strong>Message : </strong> {{ message }} <button type="button" class="close" data-dismiss="alert" aria-label="Close"> <span aria-hidden="true">&times;</span> </button> </div> {% endfor %}
+
+{% csrf_token %}//to avoid get request.
+
+   {% for product, range, nSlides in allProds %}
+<h5 class="my-4">Flash Sale On {{product.0.category}} - Recommended Items</h5>
+<div id="demo{{forloop.counter}}" class="col carousel slide my-3" data-ride="carousel">
+            <ul class="carousel-indicators">
+                <li data-target="#demo{{forloop.counter}}" data-slide-to="0" class="active"></li>
+                {% for i in range %}
+                <li data-target="#demo{{forloop.parentloop.counter}}" data-slide-to="{{i}}"></li>
+                {% endfor %}
+            </ul>
+<p class="card-text">{{i.desc|slice:"0:53"}}...</p>
+</div>
+
+<div class="container my-3">
+<h2 class="blog-post-title">{{post.title}}</h2> #here post is the model and title is their inside field.
+ <p class="blog-post-meta">{{post.timeStamp}} by <a href="/about">{{post.author}}</a> (<span > {{post.views|safe}} views</span>)</p> <p>{{post.content|safe}}</p> <hr> </div>
+
+
